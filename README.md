@@ -1,2 +1,1 @@
-# dips
- Defective interfering particles
+# DIPs.  Defective interfering particles project.

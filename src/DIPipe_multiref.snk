@@ -1,0 +1,110 @@
+#How to run
+
+#H9
+#snakemake --snakefile DIPipe_multiref.snk -j 12 --config ifq=/home/miguelgrau/projects/DIPs/cambodia_data/H9/ refFA=/home/miguelgrau/projects/DIPs/refs/multi/H9N2_camb/ out=/home/miguelgrau/projects/DIPs/H9multi/ info=/home/miguelgrau/projects/DIPs/refs/multi/H9N2_camb/info.csv -np
+#H5
+#snakemake --snakefile DIPipe_multiref.snk -j 12 --config ifq=/home/miguelgrau/projects/DIPs/cambodia_data/H5/ refFA=/home/miguelgrau/projects/DIPs/refs/multi/H5N1_camb/ out=/home/miguelgrau/projects/DIPs/H5multi/ info=/home/miguelgrau/projects/DIPs/refs/multi/H5N1_camb/info.csv -np
+#H7
+#snakemake --snakefile DIPipe_multiref.snk -j 12 --config ifq=/home/miguelgrau/projects/DIPs/cambodia_data/H7/ refFA=/home/miguelgrau/projects/DIPs/refs/multi/H7_camb/ out=/home/miguelgrau/projects/DIPs/H7multi/ info=/home/miguelgrau/projects/DIPs/refs/multi/H7_camb/info.csv -np
+
+
+#PIPE to 1)Quality trim fastq single reads 2)Map using a ONE REFERENCE PER EACH SAMPLE and a indel-aware aligner. REFERENCE AND SAMPLE MUST HAVE THE SAME NAME.
+ 
+import subprocess, sys, os, glob 
+from os.path import join
+from pathlib import Path
+from os.path import basename
+import shutil
+from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.Alphabet import generic_dna
+from Bio.SeqRecord import SeqRecord
+import numpy as np
+
+# Input parameters  ------------------------------------------------------------------------
+#
+
+#fastq
+IFQ = config["ifq"]
+
+#Reference fasta
+refFA =  config["refFA"]
+
+#Sample metadata
+infF =  config["info"]
+
+#Out folder
+workspace= config["out"]
+
+threads=4
+
+#software location
+#vy server
+trimmomatic="/home/miguelgrau/apps/Trimmomatic-0.39/trimmomatic-0.39.jar"
+#m3
+#trimmomatic="//home/miguelg/bm14/apps/Trimmomatic-0.36/trimmomatic-0.36.jar"
+
+#Check file-names
+SAMPLES=[]
+for file in glob.glob(IFQ+"*.fastq"):
+  SAMPLES.append('.'.join(file.split("/")[-1].split(".")[:-1]))
+
+filenam={}
+with open (infF,"r") as f:
+  for line in f:
+    filenam[line.split("\t")[0]]=line.split("\t")[1][:-1]
+
+#print(filenam)
+
+## Functions -------------------------------------------------------------------
+
+# Rules ------------------------------------------------------------------------
+#
+
+rule all:
+    input:
+        expand(workspace+'qualtrim/{sample}.fastq', sample=SAMPLES),
+        expand(workspace+'star/{sample}/run/SJ.out.tab', sample=SAMPLES)
+ 
+#############################################################################
+#                                                                           #
+#    QUALTRIM                                                               #
+#                                                                           #    
+#############################################################################
+
+FASTA_DIR = IFQ
+PATTERN = '{sample}.fastq'
+
+#Prestep QUALITY FILTER
+rule filter:
+  input:
+      IFQ+"{sample}.fastq"
+  output:
+      files=workspace+'qualtrim/{sample}.fastq'
+  params:
+      trimmo=trimmomatic
+  shell:"""
+      java -jar {params.trimmo}  SE -phred33 {input} {output.files} SLIDINGWINDOW:4:15 LEADING:3
+  """   
+
+#############################################################################
+#                                                                           #
+#    INDEL AWARE ALIGNER                                                    #
+#                                                                           #    
+#############################################################################
+
+rule STAR:
+    input:
+        workspace+'qualtrim/{sample}.fastq'
+    output:
+        workspace+'star/{sample}/run/SJ.out.tab'
+    params:
+        ref=refFA+"{sample}.fa",
+        outf=workspace+"star/{sample}"
+    shell:"""
+        mkdir -p {params.outf}
+        STAR --runMode genomeGenerate --genomeSAindexNbases 5 --genomeDir {params.outf} --genomeFastaFiles {params.ref}
+        mkdir -p {params.outf}/run
+        cd {params.outf}/run
+        STAR --genomeDir {params.outf} --readFilesIn {input}
+    """

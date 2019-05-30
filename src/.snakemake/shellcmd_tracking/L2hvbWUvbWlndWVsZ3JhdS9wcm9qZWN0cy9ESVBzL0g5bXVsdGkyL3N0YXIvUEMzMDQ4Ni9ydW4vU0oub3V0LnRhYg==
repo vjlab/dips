@@ -1,0 +1,7 @@
+
+        mkdir -p /home/miguelgrau/projects/DIPs/H9multi2/star/PC30486
+        STAR --runMode genomeGenerate --genomeSAindexNbases 5 --genomeDir /home/miguelgrau/projects/DIPs/H9multi2/star/PC30486 --genomeFastaFiles /home/miguelgrau/projects/DIPs/refs/multi/H9N2_camb/PC30486.fa
+        mkdir -p /home/miguelgrau/projects/DIPs/H9multi2/star/PC30486/run
+        cd /home/miguelgrau/projects/DIPs/H9multi2/star/PC30486/run
+        STAR --genomeDir /home/miguelgrau/projects/DIPs/H9multi2/star/PC30486 --readFilesIn /home/miguelgrau/projects/DIPs/H9multi2/qualtrim/PC30486.fastq
+    

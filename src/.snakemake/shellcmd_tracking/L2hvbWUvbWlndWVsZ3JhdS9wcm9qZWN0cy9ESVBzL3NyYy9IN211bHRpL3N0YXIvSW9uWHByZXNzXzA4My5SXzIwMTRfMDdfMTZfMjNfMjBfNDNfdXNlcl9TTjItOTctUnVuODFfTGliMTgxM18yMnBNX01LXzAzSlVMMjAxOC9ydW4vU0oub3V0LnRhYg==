@@ -1,0 +1,7 @@
+
+        mkdir -p /home/miguelgrau/projects/DIPs/src/H7multi/star/IonXpress_083.R_2014_07_16_23_20_43_user_SN2-97-Run81_Lib1813_22pM_MK_03JUL2018
+        STAR --runMode genomeGenerate --genomeSAindexNbases 5 --genomeDir /home/miguelgrau/projects/DIPs/src/H7multi/star/IonXpress_083.R_2014_07_16_23_20_43_user_SN2-97-Run81_Lib1813_22pM_MK_03JUL2018 --genomeFastaFiles /home/miguelgrau/projects/DIPs/refs/multi/H7_camb/IonXpress_083.R_2014_07_16_23_20_43_user_SN2-97-Run81_Lib1813_22pM_MK_03JUL2018.fa
+        mkdir -p /home/miguelgrau/projects/DIPs/src/H7multi/star/IonXpress_083.R_2014_07_16_23_20_43_user_SN2-97-Run81_Lib1813_22pM_MK_03JUL2018/run
+        cd /home/miguelgrau/projects/DIPs/src/H7multi/star/IonXpress_083.R_2014_07_16_23_20_43_user_SN2-97-Run81_Lib1813_22pM_MK_03JUL2018/run
+        STAR --genomeDir /home/miguelgrau/projects/DIPs/src/H7multi/star/IonXpress_083.R_2014_07_16_23_20_43_user_SN2-97-Run81_Lib1813_22pM_MK_03JUL2018 --readFilesIn /home/miguelgrau/projects/DIPs/src/H7multi/qualtrim/IonXpress_083.R_2014_07_16_23_20_43_user_SN2-97-Run81_Lib1813_22pM_MK_03JUL2018.fastq
+    
