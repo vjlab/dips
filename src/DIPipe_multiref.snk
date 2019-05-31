@@ -64,7 +64,8 @@ with open (infF,"r") as f:
 rule all:
     input:
         expand(workspace+'qualtrim/{sample}.fastq', sample=SAMPLES),
-        expand(workspace+'star/{sample}/run/SJ.out.tab', sample=SAMPLES)
+        expand(workspace+'star/{sample}/run/SJ.out.tab', sample=SAMPLES),
+        expand(workspace+'DItector/{sample}/DI-tector_counts.txt', sample=SAMPLES)
  
 #############################################################################
 #                                                                           #
@@ -108,3 +109,16 @@ rule STAR:
         cd {params.outf}/run
         STAR --genomeDir {params.outf} --readFilesIn {input}
     """
+
+rule ditector:
+  input:
+    files=workspace+'qualtrim/{sample}.fastq'
+  output:
+    files=workspace+'DItector/{sample}/DI-tector_counts.txt'
+  params:
+    out=workspace+'DItector/{sample}/',
+    ref=refFA+"{sample}.fa"
+  shell:"""
+    bwa index {params.ref}
+    python3 /home/miguelgrau/apps/DI-tector_06.py {params.ref} {input.files} -o {params.out} -x 4
+  """
