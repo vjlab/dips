@@ -7,6 +7,8 @@
 #H7
 #snakemake --snakefile DIPipe_multiref.snk -j 12 --config ifq=/home/miguelgrau/projects/DIPs/cambodia_data/H7/ refFA=/home/miguelgrau/projects/DIPs/refs/multi/H7_camb/ out=/home/miguelgrau/projects/DIPs/H7multi/ info=/home/miguelgrau/projects/DIPs/refs/multi/H7_camb/info.csv -np
 
+#IMPORTANT
+#DI-detect generates very heavy temporal files, so if you get some error, try running less jobs at once `-j 2`
 
 #PIPE to 1)Quality trim fastq single reads 2)Map using a ONE REFERENCE PER EACH SAMPLE and a indel-aware aligner. REFERENCE AND SAMPLE MUST HAVE THE SAME NAME.
  

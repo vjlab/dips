@@ -1,5 +1,6 @@
 #How to run
 # 
+
 #snakemake --snakefile DIPipe.snk -j 12 --config ifq=/home/miguelgrau/projects/DIPs/cambodia_data/H9/ refFA=/home/miguelgrau/projects/DIPs/refs/h9n2.fa out=/home/miguelgrau/projects/DIPs/H9/ -np
 
 #snakemake --snakefile DIPipe.snk -j 12 --config ifq=/home/miguelg/bm14/data/DIPs/DI/RSV/Run77extracted/ refFA=/home/miguelg/bm14/data/DIPs/DI/RSV/Run77extracted/RSVA_ON1_ref.txt out=/home/miguelg/bm14_scratch/miguel/DIP/RSV77singleref/ -np
