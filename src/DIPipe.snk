@@ -2,6 +2,8 @@
 # 
 #snakemake --snakefile DIPipe.snk -j 12 --config ifq=/home/miguelgrau/projects/DIPs/cambodia_data/H9/ refFA=/home/miguelgrau/projects/DIPs/refs/h9n2.fa out=/home/miguelgrau/projects/DIPs/H9/ -np
 
+#snakemake --snakefile DIPipe.snk -j 12 --config ifq=/home/miguelg/bm14/data/DIPs/DI/RSV/Run77extracted/ refFA=/home/miguelg/bm14/data/DIPs/DI/RSV/Run77extracted/RSVA_ON1_ref.txt out=/home/miguelg/bm14_scratch/miguel/DIP/RSV77singleref/ -np
+
 #PIPE to 1)Quality trim fastq single reads 2)Map using a EXTERNAL SINGLE REFERENCE and a indel-aware aligner.
  
 import subprocess, sys, os, glob 
@@ -34,9 +36,9 @@ threads=4
 
 #software location
 #vy server
-trimmomatic="/home/miguelgrau/apps/Trimmomatic-0.39/trimmomatic-0.39.jar"
+#trimmomatic="/home/miguelgrau/apps/Trimmomatic-0.39/trimmomatic-0.39.jar"
 #m3
-#trimmomatic="//home/miguelg/bm14/apps/Trimmomatic-0.36/trimmomatic-0.36.jar"
+trimmomatic="/home/miguelg/bm14/apps/Trimmomatic-0.36/trimmomatic-0.36.jar"
 
 
 #Check file-names
@@ -55,7 +57,9 @@ print(SAMPLES)
 rule all:
     input:
         expand(workspace+'qualtrim/{sample}.fastq', sample=SAMPLES),
-        expand(workspace+'star/{sample}/run/SJ.out.tab', sample=SAMPLES)
+        expand(workspace+'star/{sample}/run/SJ.out.tab', sample=SAMPLES),
+        expand(workspace+'DItector/{sample}/DI-tector_counts.txt', sample=SAMPLES),
+        expand(workspace+'starOnlyDips/{sample}/run/SJ.out.tab', sample=SAMPLES)
  
 #############################################################################
 #                                                                           #
@@ -74,7 +78,7 @@ rule filter:
       files=workspace+'qualtrim/{sample}.fastq'
     params:
       trimmo=trimmomatic
-   shell:"""
+    shell:"""
       java -jar {params.trimmo} SE -phred33 {input} {output.files} SLIDINGWINDOW:4:15 LEADING:3
   """   
 
@@ -89,6 +93,56 @@ rule STAR:
         workspace+'qualtrim/{sample}.fastq'
     output:
         workspace+'star/{sample}/run/SJ.out.tab'
+    params:
+        ref=refFA,
+        outf=workspace+"star/{sample}"
+    shell:"""
+        mkdir -p {params.outf}
+        STAR --runMode genomeGenerate --genomeSAindexNbases 5 --genomeDir {params.outf} --genomeFastaFiles {params.ref}
+        mkdir -p {params.outf}/run
+        cd {params.outf}/run
+        STAR --genomeDir {params.outf} --readFilesIn {input}
+    """
+
+rule ditector:
+  input:
+    files=workspace+'qualtrim/{sample}.fastq'
+  output:
+    files=workspace+'DItector/{sample}/DI-tector_counts.txt'
+    files2=workspace+'DItector/{sample}/DI-tector_output_sorted.txt'
+  params:
+    out=workspace+'DItector/{sample}/',
+    ref=refFA
+  shell:"""
+    bwa index {params.ref}
+    python3 /home/miguelg/bm14/apps/DI-tector_06.py {params.ref} {input.files} -o {params.out} -x 4
+  """
+
+#Prepare fastas for di-tector output
+rule ditect2fasta:
+  input:
+    fi=workspace+'DItector/{sample}/DI-tector_output_sorted.txt'
+  output:
+    fo=workspace+'DItector/{sample}/DI-tector.dips.fasta'
+  params:
+    out=workspace+'DItector/{sample}/',
+    ref=refFA
+  shell:"""
+    res=""
+    with open (input.fi,'r') as fi:
+      for line in fi:
+        if line.split("\t")[0]!="DVG's type":
+          res+=">"+line.split("\t")[-2]+"\n"+line.split("\t")[-1]
+    with open (output.fo,'w') as fo:
+      fo.write(res)
+  """
+
+#Run STAR only with DIPS form di-tector
+rule STAR:
+    input:
+        fo=workspace+'DItector/{sample}/DI-tector.dips.fasta'
+    output:
+        workspace+'starOnlyDips/{sample}/run/SJ.out.tab'
     params:
         ref=refFA,
         outf=workspace+"star/{sample}"
