@@ -37,9 +37,9 @@ threads=4
 
 #software location
 #vy server
-#trimmomatic="/home/miguelgrau/apps/Trimmomatic-0.39/trimmomatic-0.39.jar"
+trimmomatic="/home/miguelgrau/apps/Trimmomatic-0.39/trimmomatic-0.39.jar"
 #m3
-trimmomatic="/home/miguelg/bm14/apps/Trimmomatic-0.36/trimmomatic-0.36.jar"
+#trimmomatic="/home/miguelg/bm14/apps/Trimmomatic-0.36/trimmomatic-0.36.jar"
 
 
 #Check file-names
@@ -109,7 +109,7 @@ rule ditector:
   input:
     files=workspace+'qualtrim/{sample}.fastq'
   output:
-    files=workspace+'DItector/{sample}/DI-tector_counts.txt'
+    files=workspace+'DItector/{sample}/DI-tector_counts.txt',
     files2=workspace+'DItector/{sample}/DI-tector_output_sorted.txt'
   params:
     out=workspace+'DItector/{sample}/',
@@ -139,7 +139,7 @@ rule ditect2fasta:
   """
 
 #Run STAR only with DIPS form di-tector
-rule STAR:
+rule STAR2:
     input:
         fo=workspace+'DItector/{sample}/DI-tector.dips.fasta'
     output:
