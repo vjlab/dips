@@ -1,5 +1,6 @@
 
-#snakemake --snakefile assembly_DENGUE.snk -j 8 --config ifq=/home/miguelg/bm14/data/DIPs/dengue/ out=/home/miguelg/bm14_scratch/miguel/DIP/dengue3/ -np 
+#snakemake --snakefile assembly_noSegmented.snk -j 8 --config ifq=/home/miguelg/bm14/data/DIPs/dengue/ out=/home/miguelg/bm14_scratch/miguel/DIP/dengue3/ -np 
+#snakemake --snakefile assembly_noSegmented.snk -j 8 --config ifq=/home/miguelg/bm14/data/DIPs/DI/RSV/Run77extracted/ out=/home/miguelg/bm14_scratch/miguel/DIP/RSV_Run77multiple_ref/ -np
 
 import subprocess, sys, os, glob 
 from os.path import join
