@@ -1,0 +1,330 @@
+
+#snakemake --snakefile assembly_DENGUE.snk -j 8 --config ifq=/home/miguelg/bm14/data/DIPs/dengue/ out=/home/miguelg/bm14_scratch/miguel/DIP/dengue3/ -np 
+
+import subprocess, sys, os, glob 
+from os.path import join
+from pathlib import Path
+from os.path import basename
+import shutil
+from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.Alphabet import generic_dna
+from Bio.SeqRecord import SeqRecord
+
+#############################################################################
+#                                                                           #
+# Description                                                               #
+#                                                                           #    
+#############################################################################
+
+#Pipeline designed to obtain consensus secuencies from raw DENGUE paired fastq data generating denovo assemblies.
+#The steps are: QualityTrim -> Denovo assembly -> blastn (using a custom flu database or the entire database) to identify the contigs -> Use the references identified to map the raw reads (bwa) -> (Optional, create consensus)
+#This version of the pipeline is ready for NO-SEGMENTED VIRUS.
+
+# Input parameters  ------------------------------------------------------------------------
+#
+
+#raw fastq
+IFQ = config["ifq"]
+
+workspace= config["out"]
+
+#split correction step
+threads=8
+
+#blastDB="~/bm14/apps/blast_database/nt/nt"
+#Or flu database (1078811 entries on 16/Oct/2018)
+#blastDB="/home/miguelg/bm14_scratch/databases/influenza/ncbi/influenza_ncbi_16_oct_2018"
+#Rotavirus database (~80k entries on 31/Oct/2018)
+#blastDB="/home/miguelg/bm14_scratch/databases/rotavirus/rotavirus_ncbi_31-oct-2018.fasta"
+#blastDB="/home/miguelg/bm14_scratch/databases/rotavirus/all_vipr_nodup.fa"
+
+#IRD databases
+#blastDB="/home/miguelg/bm14_scratch/databases/influenza/IRD_database_complete_genome_segments"
+#blastDB="/home/miguelg/bm14_scratch/databases/influenza/IRD_database_complete_segments"
+
+#GISAID
+#blastDB="/home/miguelg/bm14_scratch/databases/influenza/epiflu_GISAID"
+#blastDB="/home/miguelg/bm14_scratch/databases/influenza/epiflu_uniqGISAID"
+
+#RSV VIPR
+#blastDB="/home/miguelg/bm14_scratch/miguel/DIP/RSV_database/274413853086-RSV_completeGenomesVIPRnoN.fasta"
+
+#DENGUE VIPR
+blastDB="/home/miguelg/bm14_scratch/databases/dengue/dengueVIPR_16_July_19.fasta"
+
+#Check file-names
+SAMPLES=[]
+for file in glob.glob(IFQ+"*.R1.fastq.gz"):
+  SAMPLES.append('.'.join(file.split("/")[-1].split(".")[:-3]))
+
+#print(idDict)
+
+## Functions -------------------------------------------------------------------
+
+ 
+# Rules ------------------------------------------------------------------------
+# 
+
+rule all:
+    input:
+        #expand(workspace+"qualtrim/{sample}.R1.paired.fastq", sample=SAMPLES),
+        #expand(workspace+'assemblies/{sample}/contigs.fasta', sample=idlist),
+        ##expand(workspace+'alignments/{sample}.bam', sample=idlist)
+        #expand(workspace+'alignments/{sample}.noInd.bam', sample=idlist),
+        ##expand(workspace+'consensus/post/{sample}.idFix.fa', sample=idlist),
+        ##expand(workspace+'consensus/segments/{segment}.fa',  segment=segmentsRota)
+        #expand(workspace+'blast/{sample}/results.fasta', sample=idlist),
+        #expand(workspace+'blast/{sample}/results.out', sample=idlist),
+        expand(workspace+'consensus/post/{sample}.fa', sample=SAMPLES)
+        #expand(workspace+'consensus/post/{sample}.idFix.fa', sample=idlist),
+        #expand(workspace+'consensus/segments/{segment}.fa',  segment=segmentsRota)
+
+
+
+#Paired read
+SAMPLES, PAIR= glob_wildcards(IFQ+"/{sample}.{pair}.fastq.gz")
+
+#Single read
+# FASTA_DIR = IFQ
+# PATTERN = '{sample}.fastq'
+
+
+# #Prestep QUALITY FILTER SINGLE
+# rule filter:
+#    input:
+#         IFQ+"{sample}.fastq"
+#    output:
+#         files=workspace+'qualtrim/{sample}.fastq'
+#    shell:"""
+#       java -jar /home/miguelg/bm14/apps/Trimmomatic-0.36/trimmomatic-0.36.jar SE -phred33 {input} {output.files} SLIDINGWINDOW:4:15 LEADING:3
+#   """   
+
+#Prestep QUALITY FILTER PAIRED
+rule filter:
+    input:
+        #fastq=join(FASTA_DIR, PATTERN)
+        faR1=expand(IFQ+"{{sample}}.{pair}.fastq.gz", pair=["R1"]),
+        faR2=expand(IFQ+"{{sample}}.{pair}.fastq.gz", pair=["R2"])
+    output:
+        #files=workspace+'qualtrim/{sample}.fq'
+        R1out=workspace+"qualtrim/{sample}.R1.paired.fastq",
+        R2out=workspace+"qualtrim/{sample}.R2.paired.fastq",
+        R1out_unpaired=workspace+"qualtrim/{sample}.R1.unpaired.fastq",
+        R2out_unpaired=workspace+"qualtrim/{sample}.R2.unpaired.fastq"
+    shell:"""
+        java -jar /home/miguelg/bm14/apps/Trimmomatic-0.36/trimmomatic-0.36.jar PE -phred33 {input.faR1} {input.faR2} {output.R1out} {output.R1out_unpaired} {output.R2out} {output.R2out_unpaired} ILLUMINACLIP:/home/miguelg/bm14/apps/Trimmomatic-0.36/adapters/NexteraPE-PE.fa:2:30:10 SLIDINGWINDOW:4:15 LEADING:15 TRAILING:15 MINLEN:100
+"""   
+
+#2nd option
+#cutadapt --minimum-length 100 --cut 10 --cut -50 -o {output.files} {input.fastq}
+
+#Denovo assembly using SPADES.
+# rule spadesSINGLE:
+#     input:
+#         fastq=workspace+'qualtrim/{sample}.fastq'
+#     output:
+#         contigs=workspace+'assemblies/{sample}/contigs.fasta'
+#     params:
+#         folder=workspace+'assemblies/{sample}/'
+#     shell:"""
+#     python /home/miguelg/bm14/apps/SPAdes-3.11.1-Linux/bin/spades.py --iontorrent -t 8 --careful --cov-cutoff auto -s {input.fastq} -k 21,33,55,77,99,127 -o {params.folder}
+#     """
+
+#Denovo assembly using SPADES. MetaSpades only allows paired reads.
+rule spadesPE:
+    input:
+        R1=workspace+"qualtrim/{sample}.R1.paired.fastq",
+        R2=workspace+"qualtrim/{sample}.R2.paired.fastq",
+        R1unpaired=workspace+"qualtrim/{sample}.R1.unpaired.fastq",
+        R2unpaired=workspace+"qualtrim/{sample}.R2.unpaired.fastq"
+    output:
+        contigs=workspace+'assemblies/{sample}/contigs.fasta'
+    params:
+        folder=workspace+'assemblies/{sample}/'
+    shell:"""
+        python /home/miguelg/bm14/apps/SPAdes-3.11.1-Linux/bin/spades.py -k 21,33,55,77,99,127 --careful --pe1-1 {input.R1} --pe1-2 {input.R2} --pe1-s {input.R1unpaired} --pe1-s {input.R2unpaired} -o {params.folder}
+    """
+
+#Scaffolding doesn't worth to do it with single end reads, check for paired-illumina?
+
+rule blastn:
+    input:
+        contigs=workspace+'assemblies/{sample}/contigs.fasta'
+    output:
+        longContigs=workspace+'assemblies/{sample}/longContigs.fasta',
+        blastout=workspace+'blast/{sample}/results.out'
+    params:
+        blast_database=blastDB
+    shell:"""
+        bioawk -c fastx '{{ if(length($seq) > 200) {{ print ">"$name; print $seq }}}}' {input.contigs} > {output.longContigs}
+        blastn -db {params.blast_database} -query {output.longContigs} -out {output.blastout} -outfmt '6 qseqid sseqid evalue bitscore sgi sacc staxids sscinames scomnames stitle length mismatch sstart send' -evalue 0.01 -num_threads 2
+    """
+
+
+#Added min length alignemnt, 500bp
+#Added `cat results_more.out_best | sort -nk11 | head -n1`
+#it only takes the best case (min 500bp) from blast
+rule extract_references:
+    input:
+        blastout=workspace+'blast/{sample}/results.out'
+    output:
+        blastFasta=workspace+'blast/{sample}/results.fasta'
+    params:
+        blast_database=blastDB,
+        #strain=strain
+    shell:"""
+        awk -F  "\t" '{{ if ($11 >= 500) {{ print $0}} }}' {input.blastout} > {input.blastout}_minLen
+        awk '!seen[$1]++' {input.blastout}_minLen > {input.blastout}_best
+        cat {input.blastout}_best | sort -nk11 | head -n1 > {input.blastout}_best2
+        cut -d$'\t' -f6 {input.blastout}_best2 | sort | uniq > {input.blastout}_uniq
+        blastdbcmd -db {params.blast_database} -dbtype nucl -entry_batch {input.blastout}_uniq -outfmt "%f" -out {output.blastFasta}
+    """
+
+#grep "{params.strain}" {input.blastout} > {input.blastout}_{params.strain}
+#awk '!seen[$1]++' {input.blastout}_{params.strain} >> {input.blastout}_best
+
+#In case we are working with the whole blast database, blast results can contain contamination (e.coli etc). First it checks if the blast results contain the key id (RESPIRATORY_SYNCYTIAL_VIRUS).
+rule mapping:
+    input:
+        blastFasta=workspace+'blast/{sample}/results.fasta',
+        fastqR1=workspace+"qualtrim/{sample}.R1.paired.fastq",
+        fastqR2=workspace+"qualtrim/{sample}.R2.paired.fastq"
+    output:
+        sam=workspace+'alignments/{sample}.sam',
+        bam=workspace+'alignments/{sample}.bam',
+        bamNoInd=workspace+'alignments/{sample}.noInd.bam'
+    params:
+        threads=threads
+    shell:"""
+        awk '{{ print toupper($0) }}' {input.blastFasta} > {input.blastFasta}_UP
+        awk '/^>/{{x = /DENGUE/;}}(x)' {input.blastFasta}_UP > {input.blastFasta}_DEN
+        rgid=$(echo {input.fastqR1}  | md5sum | cut -d " " -f1)
+        rgpu=${{rgid}}.PU
+        bwa index {input.blastFasta}_DEN
+        bwa mem -R "@RG\\tID:$rgid\\tPL:illumina\\tPU:$rgpu\\tSM:{input.fastqR1}" {input.blastFasta}_DEN -t {params.threads} {input.fastqR1} {input.fastqR2}> {output.sam} 
+        samtools view -bT {input.blastFasta}_UP {output.sam} | samtools sort > {output.bam}
+        samtools view -h {output.bam} | awk '$1 ~ "^@" || $6 !~ "I|D"' | samtools view -b - > {output.bamNoInd}
+    """
+ 
+#####################################################################################################
+#                                                                                                   #
+# Get the consensus -> remap raw reads using the consensus.                                         #
+#                                                                                                   #
+#####################################################################################################
+
+rule consensus:
+    input:
+        bamNoInd=workspace+'alignments/{sample}.noInd.bam',
+        blastFasta=workspace+'blast/{sample}/results.fasta',
+    output:
+        vcf=workspace+'alignments/{sample}.vcf',
+        preConsensus=workspace+'consensus/pre/{sample}.fa',
+    shell:"""
+        samtools mpileup -A -uf {input.blastFasta}_DEN {input.bamNoInd} | bcftools call -mv -Oz -o {output.vcf}
+        tabix {output.vcf}
+        cat {input.blastFasta}_DEN | bcftools consensus {output.vcf} > {output.preConsensus}
+    """
+
+#Because it can contain contamination (e.coli etc), first it checks if the blast results contain the key id (RESPIRATORY_SYNCYTIAL_VIRUS).
+rule mapping2:
+    input:
+        preConsensus=workspace+'consensus/pre/{sample}.fa',
+        fastqR1=workspace+"qualtrim/{sample}.R1.paired.fastq",
+        fastqR2=workspace+"qualtrim/{sample}.R2.paired.fastq"
+    output:
+        sam=workspace+'alignments2nd/{sample}.sam',
+        bam=workspace+'alignments2nd/{sample}.bam',
+        bamNoInd=workspace+'alignments2nd/{sample}.noInd.bam'
+    params:
+        threads=threads
+    shell:"""
+        awk '{{ print toupper($0) }}' {input.preConsensus} > {input.preConsensus}_UP
+        awk '/^>/{{x = /DENGUE/;}}(x)' {input.preConsensus}_UP > {input.preConsensus}_DEN
+        rgid=$(echo {input.fastqR1}  | md5sum | cut -d " " -f1)
+        rgpu=${{rgid}}.PU
+        bwa index {input.preConsensus}_DEN
+        bwa mem -R "@RG\\tID:$rgid\\tPL:illumina\\tPU:$rgpu\\tSM:{input.fastqR1}" {input.preConsensus}_DEN -t {params.threads} {input.fastqR1} {input.fastqR2}> {output.sam} 
+        samtools view -bT {input.preConsensus}_UP {output.sam} | samtools sort > {output.bam}
+        samtools view -h {output.bam} | awk '$1 ~ "^@" || $6 !~ "I|D"' | samtools view -b - > {output.bamNoInd}
+    """
+
+#####################################################################################################
+#                                                                                                   #
+# Get the consensus -> remap raw reads using the consensus.                                         #
+#                                                                                                   #
+#####################################################################################################
+
+rule consensus2:
+    input:
+        bamNoInd=workspace+'alignments2nd/{sample}.noInd.bam',
+        preConsensus=workspace+'consensus/pre/{sample}.fa'
+    output:
+        vcf=workspace+'alignments2nd/{sample}.vcf',
+        preConsensus=workspace+'consensus/pre2nd/{sample}.fa'
+    shell:"""
+        samtools mpileup -A -uf {input.preConsensus}_DEN {input.bamNoInd} | bcftools call -mv -Oz -o {output.vcf}
+        tabix {output.vcf}
+        cat {input.preConsensus}_DEN | bcftools consensus {output.vcf} > {output.preConsensus}
+    """
+
+rule re_mapping:
+    input:
+        preConsensus=workspace+'consensus/pre2nd/{sample}.fa',
+        fastqR1=workspace+"qualtrim/{sample}.R1.paired.fastq",
+        fastqR2=workspace+"qualtrim/{sample}.R2.paired.fastq"
+    output:
+        sam=workspace+'alignments/post/{sample}.sam',
+        bam=workspace+'alignments/post/{sample}.bam',
+        bamNoInd=workspace+'alignments/post/{sample}.noInd.bam',
+        depths=workspace+'alignments/post/{sample}.noInd.depth'
+    params:
+        threads=threads
+    shell:"""
+        rgid=$(echo {input.fastqR1} | md5sum | cut -d " " -f1)
+        rgpu=${{rgid}}.PU
+        bwa index {input.preConsensus}
+        bwa mem -R "@RG\\tID:$rgid\\tPL:illumina\\tPU:$rgpu\\tSM:{input.fastqR1}" {input.preConsensus} -t {params.threads} {input.fastqR1} {input.fastqR2} > {output.sam}
+        samtools view -bT {input.preConsensus} {output.sam} | samtools sort > {output.bam}
+        samtools view -h {output.bam} | awk '$1 ~ "^@" || $6 !~ "I|D"' | samtools view -b - > {output.bamNoInd}
+        samtools depth {output.bamNoInd} -a | awk '$3 == 0' > {output.depths}
+    """
+
+#
+#Bowtie2 option
+#bowtie2-build {input.preConsensus} {input.preConsensus} 
+#bowtie2 --sensitive-local -k 50 -x {input.preConsensus} -1 {input.fastqR1} -2 {input.fastqR2} -S {output.sam} 
+
+
+#Check "special" case of no raw reads at all are mapped to the reference
+rule FINALconsensus:
+    input:
+        bamNoInd=workspace+'alignments/post/{sample}.noInd.bam',
+        preConsensus=workspace+'consensus/pre2nd/{sample}.fa',
+        depths=workspace+'alignments/post/{sample}.noInd.depth'
+    output:
+        vcf=workspace+'alignments/post/{sample}.vcf',
+        postConsensus=workspace+'consensus/post/{sample}.fa',
+        bed=workspace+'alignments/post/{sample}.bed',
+        postConsensusMasked=workspace+'consensus/pre2nd/{sample}.masked.fasta',
+        postConsensusMaskedRenamed=workspace+'consensus/pre2nd/{sample}.masked.renamed.fasta',
+    shell:"""
+        awk -v OFS='\t' '{{print $1,$2,$2+1}}' {input.depths} > {output.bed}
+        samtools mpileup -B -A -uf {input.preConsensus} {input.bamNoInd} | bcftools call -mv -Oz -o {output.vcf}
+        tabix {output.vcf}
+        bedtools maskfasta -fi {input.preConsensus} -bed {output.bed} -fo {output.postConsensusMasked}
+        python fix_bedtool_id.py {input.preConsensus} {output.postConsensusMasked} > {output.postConsensusMaskedRenamed}
+        cat {output.postConsensusMaskedRenamed} | bcftools consensus {output.vcf} > {output.postConsensus}
+    """
+
+# samtools mpileup -B -A --ff UNMAP,QCFAIL,DUP -uf {input.preConsensus} {input.bamNoInd} | bcftools call -mv -Oz -o {output.vcf}
+ 
+# rule extract_segments:
+#     input:
+#         postConsensus=expand(workspace+'consensus/post/{sample}.idFix.fa', sample=idlist)
+#     output:
+#         segm=expand(workspace+'consensus/segments/{segment}.fa',  segment=segmentsRota)
+#     run:
+#         for segment in output.segm:
+#             take_segments(input.postConsensus, segment)
+
