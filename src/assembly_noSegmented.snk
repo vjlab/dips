@@ -314,7 +314,7 @@ rule FINALconsensus:
         samtools mpileup -B -A -uf {input.preConsensus} {input.bamNoInd} | bcftools call -mv -Oz -o {output.vcf}
         tabix {output.vcf}
         bedtools maskfasta -fi {input.preConsensus} -bed {output.bed} -fo {output.postConsensusMasked}
-        python fix_bedtool_id.py {input.preConsensus} {output.postConsensusMasked} > {output.postConsensusMaskedRenamed}
+        python tools/fix_bedtool_id.py {input.preConsensus} {output.postConsensusMasked} > {output.postConsensusMaskedRenamed}
         cat {output.postConsensusMaskedRenamed} | bcftools consensus {output.vcf} > {output.postConsensus}
     """
 
