@@ -33,21 +33,6 @@ workspace= config["out"]
 #split correction step
 threads=8
 
-#blastDB="~/bm14/apps/blast_database/nt/nt"
-#Or flu database (1078811 entries on 16/Oct/2018)
-#blastDB="/home/miguelg/bm14_scratch/databases/influenza/ncbi/influenza_ncbi_16_oct_2018"
-#Rotavirus database (~80k entries on 31/Oct/2018)
-#blastDB="/home/miguelg/bm14_scratch/databases/rotavirus/rotavirus_ncbi_31-oct-2018.fasta"
-#blastDB="/home/miguelg/bm14_scratch/databases/rotavirus/all_vipr_nodup.fa"
-
-#IRD databases
-#blastDB="/home/miguelg/bm14_scratch/databases/influenza/IRD_database_complete_genome_segments"
-#blastDB="/home/miguelg/bm14_scratch/databases/influenza/IRD_database_complete_segments"
-
-#GISAID
-#blastDB="/home/miguelg/bm14_scratch/databases/influenza/epiflu_GISAID"
-#blastDB="/home/miguelg/bm14_scratch/databases/influenza/epiflu_uniqGISAID"
-
 #RSV VIPR
 #blastDB="/home/miguelg/bm14_scratch/miguel/DIP/RSV_database/274413853086-RSV_completeGenomesVIPRnoN.fasta"
 
@@ -284,17 +269,19 @@ rule re_mapping:
     shell:"""
         rgid=$(echo {input.fastqR1} | md5sum | cut -d " " -f1)
         rgpu=${{rgid}}.PU
-        bwa index {input.preConsensus}
-        bwa mem -R "@RG\\tID:$rgid\\tPL:illumina\\tPU:$rgpu\\tSM:{input.fastqR1}" {input.preConsensus} -t {params.threads} {input.fastqR1} {input.fastqR2} > {output.sam}
+        bowtie2-build {input.preConsensus} {input.preConsensus} 
+        bowtie2 --sensitive-local -k 50 -x {input.preConsensus} -1 {input.fastqR1} -2 {input.fastqR2} -S {output.sam}
         samtools view -bT {input.preConsensus} {output.sam} | samtools sort > {output.bam}
         samtools view -h {output.bam} | awk '$1 ~ "^@" || $6 !~ "I|D"' | samtools view -b - > {output.bamNoInd}
         samtools depth {output.bamNoInd} -a | awk '$3 == 0' > {output.depths}
     """
 
-#
 #Bowtie2 option
 #bowtie2-build {input.preConsensus} {input.preConsensus} 
 #bowtie2 --sensitive-local -k 50 -x {input.preConsensus} -1 {input.fastqR1} -2 {input.fastqR2} -S {output.sam} 
+#bwa option
+#bwa index {input.preConsensus}
+#bwa mem -R "@RG\\tID:$rgid\\tPL:illumina\\tPU:$rgpu\\tSM:{input.R1out}" {input.preConsensus} -t {params.threads} {input.R1out} {input.R2out} > {output.sa
 
 
 #Check "special" case of no raw reads at all are mapped to the reference
@@ -305,17 +292,22 @@ rule FINALconsensus:
         depths=workspace+'alignments/post/{sample}.noInd.depth'
     output:
         vcf=workspace+'alignments/post/{sample}.vcf',
+        vcfilt=workspace+'alignments/post/{sample}.filt.vcf',
         postConsensus=workspace+'consensus/post/{sample}.fa',
         bed=workspace+'alignments/post/{sample}.bed',
         postConsensusMasked=workspace+'consensus/pre2nd/{sample}.masked.fasta',
         postConsensusMaskedRenamed=workspace+'consensus/pre2nd/{sample}.masked.renamed.fasta',
     shell:"""
         awk -v OFS='\t' '{{print $1,$2,$2+1}}' {input.depths} > {output.bed}
-        samtools mpileup -B -A -uf {input.preConsensus} {input.bamNoInd} | bcftools call -mv -Oz -o {output.vcf}
-        tabix {output.vcf}
+        bcftools mpileup -A -Ov -f {input.preConsensus} {input.bamNoInd} | bcftools call -mv -Ov -o {output.vcf}
+        #Filter
+        python tools/filterVCF.py {output.vcf} > {output.vcfilt}
+        sed -i '/^$/d' {output.vcfilt}
+        bgzip -c {output.vcfilt} > {output.vcfilt}.gz
+        tabix -p vcf {output.vcfilt}.gz
         bedtools maskfasta -fi {input.preConsensus} -bed {output.bed} -fo {output.postConsensusMasked}
         python tools/fix_bedtool_id.py {input.preConsensus} {output.postConsensusMasked} > {output.postConsensusMaskedRenamed}
-        cat {output.postConsensusMaskedRenamed} | bcftools consensus {output.vcf} > {output.postConsensus}
+        cat {output.postConsensusMaskedRenamed} | bcftools consensus {output.vcfilt}.gz > {output.postConsensus}
     """
 
 # samtools mpileup -B -A --ff UNMAP,QCFAIL,DUP -uf {input.preConsensus} {input.bamNoInd} | bcftools call -mv -Oz -o {output.vcf}
