@@ -283,6 +283,7 @@ rule re_mapping:
 #bwa index {input.preConsensus}
 #bwa mem -R "@RG\\tID:$rgid\\tPL:illumina\\tPU:$rgpu\\tSM:{input.R1out}" {input.preConsensus} -t {params.threads} {input.R1out} {input.R2out} > {output.sa
 
+#kindel (the program used in the ferrets project to obtain the consensus) can't be used with a multi-bam alignment, that's why I use tools/filterVCF.py. Another option is using `bcftools view -e '(DP4[2]+DP4[3])<(DP4[0]+DP4[1])' in.vcf.gz -o out.vcf`(https://github.com/samtools/bcftools/issues/1064). I have compared the three cases (kindel, filterVCF.py and `bcftools view`) and the consensus is the SAME. Using `bcftools consensus` directly with the `bcftools mpileup/bcftools call` DOESN'T WORK.
 
 #Check "special" case of no raw reads at all are mapped to the reference
 rule FINALconsensus:
