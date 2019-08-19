@@ -99,7 +99,7 @@ rule filter:
         R1out_unpaired=workspace+"qualtrim/{sample}.R1.unpaired.fastq",
         R2out_unpaired=workspace+"qualtrim/{sample}.R2.unpaired.fastq"
     shell:"""
-        java -jar /home/miguelg/bm14/apps/Trimmomatic-0.36/trimmomatic-0.36.jar PE -phred33 {input.faR1} {input.faR2} {output.R1out} {output.R1out_unpaired} {output.R2out} {output.R2out_unpaired} ILLUMINACLIP:/home/miguelg/bm14/apps/Trimmomatic-0.36/adapters/NexteraPE-PE.fa:2:30:10 SLIDINGWINDOW:4:15 LEADING:15 TRAILING:15 MINLEN:100
+        java -jar /home/miguelg/bm14/apps/Trimmomatic-0.36/trimmomatic-0.36.jar PE -phred33 {input.faR1} {input.faR2} {output.R1out} {output.R1out_unpaired} {output.R2out} {output.R2out_unpaired} ILLUMINACLIP:/home/miguelg/bm14/apps/Trimmomatic-0.36/adapters/NexteraPE-PE.fa:2:30:10 SLIDINGWINDOW:4:15 LEADING:15 TRAILING:15 MINLEN:100 HEADCROP:10
 """   
 
 #2nd option
