@@ -102,7 +102,7 @@ rule filter:
     params:
         trimmo=trimmomatic
     shell:"""
-        java -jar {params.trimmo} PE -phred33 {input.faR1} {input.faR2} {output.R1out} {output.R1out_unpaired} {output.R2out} {output.R2out_unpaired} ILLUMINACLIP:/home/miguelg/bm14/apps/Trimmomatic-0.36/adapters/NexteraPE-PE.fa:2:30:10 SLIDINGWINDOW:4:15 LEADING:15 TRAILING:15 MINLEN:100 HEADCROP:10
+        java -jar {params.trimmo} PE -phred33 {input.faR1} {input.faR2} {output.R1out} {output.R1out_unpaired} {output.R2out} {output.R2out_unpaired} ILLUMINACLIP:/home/miguelg/bm14/apps/Trimmomatic-0.36/adapters/NexteraPE-PE.fa:2:30:10 SLIDINGWINDOW:4:15 LEADING:15 TRAILING:15 MINLEN:100 HEADCROP:20
 """   
 
 
