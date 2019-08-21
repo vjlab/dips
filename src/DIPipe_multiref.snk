@@ -94,7 +94,7 @@ rule filter:
   params:
       trimmo=trimmomatic
   shell:"""
-      java -jar {params.trimmo}  SE -phred33 {input} {output.files} SLIDINGWINDOW:4:15 LEADING:3
+      java -jar {params.trimmo}  SE -phred33 {input} {output.files} SLIDINGWINDOW:4:15 LEADING:3 HEADCROP:10
   """   
 
 #############################################################################
