@@ -5,6 +5,10 @@
 
 #snakemake --snakefile DIPipe.snk -j 12 --config ifq=/home/miguelg/bm14/data/DIPs/DI/RSV/Run77extracted/ refFA=/home/miguelg/bm14/data/DIPs/DI/RSV/Run77extracted/RSVA_ON1_ref.txt out=/home/miguelg/bm14_scratch/miguel/DIP/RSV77singleref/ -np
 
+#'new refs'
+#snakemake --snakefile DIPipe.snk -j 12 --config ifq=/home/miguelg/bm14/data/DIPs/DI/RSV/Run77extracted/ refFA=/home/miguelg/bm14/data/DIPs/DI/RSV/Run77extracted/3327.4.fa out=/home/miguelg/bm14_scratch/miguel/DIP/RSV77singleref3327/ -np
+#snakemake --snakefile DIPipe.snk -j 12 --config ifq=/home/miguelg/bm14/data/DIPs/DI/RSV/Run77extracted/ refFA=/home/miguelg/bm14/data/DIPs/DI/RSV/Run77extracted/6201.4.fa out=/home/miguelg/bm14_scratch/miguel/DIP/RSV77singleref6201/ -np
+
 #PIPE to 1)Quality trim fastq single reads 2)Map using a EXTERNAL SINGLE REFERENCE and a indel-aware aligner.
  
 import subprocess, sys, os, glob 
@@ -37,10 +41,10 @@ threads=4
 
 #software location
 #vy server
-trimmomatic="/home/miguelgrau/apps/Trimmomatic-0.39/trimmomatic-0.39.jar"
+#trimmomatic="/home/miguelgrau/apps/Trimmomatic-0.39/trimmomatic-0.39.jar"
 #m3
-#trimmomatic="/home/miguelg/bm14/apps/Trimmomatic-0.36/trimmomatic-0.36.jar"
-
+trimmomatic="/home/miguelg/bm14/apps/Trimmomatic-0.36/trimmomatic-0.36.jar"
+ditect="/home/miguelg/bm14/apps/DI-tector_06.py"
 
 #Check file-names
 SAMPLES=[]
@@ -50,7 +54,16 @@ for file in glob.glob(IFQ+"*.fastq"):
 print(SAMPLES)
 
 ## Functions -------------------------------------------------------------------
- 
+
+def extracttype (t):
+  if "Deletion" in t:
+    return "Deletion"
+  elif "Insertion" in t:
+    return "Insertion"
+  elif "3' cb/sb" in t:
+    return "3cb/sb"
+  elif "5' cb/sb" in t:
+    return "5cb/sb"
 
 # Rules ------------------------------------------------------------------------
 #
@@ -113,10 +126,11 @@ rule ditector:
     files2=workspace+'DItector/{sample}/DI-tector_output_sorted.txt'
   params:
     out=workspace+'DItector/{sample}/',
-    ref=refFA
+    ref=refFA,
+    ditect=ditect
   shell:"""
     bwa index {params.ref}
-    python3 /home/miguelg/bm14/apps/DI-tector_06.py {params.ref} {input.files} -o {params.out} -x 4
+    python3 {params.ditect} {params.ref} {input.files} -o {params.out} -x 4
   """
 
 #Prepare fastas for di-tector output
@@ -128,15 +142,18 @@ rule ditect2fasta:
   params:
     out=workspace+'DItector/{sample}/',
     ref=refFA
-  shell:"""
+  run:
     res=""
-    with open (input.fi,'r') as fi:
+    with open (input[0],'r') as fi:
       for line in fi:
         if line.split("\t")[0]!="DVG's type":
-          res+=">"+line.split("\t")[-2]+"\n"+line.split("\t")[-1]
-    with open (output.fo,'w') as fo:
+          diptype=extracttype(line.split("\t")[0])
+          seqs=re.findall(r'[a-z]+|[A-Z]+', line.split("\t")[-1][:-1])
+          #res+=">"+line.split("\t")[-2]+"_"+diptype+"_"+line.split("\t")[2]+"_"+line.split("\t")[3]+"_"+line.split("\t")[8].split("|")[1][:-1]+"\n"+line.split("\t")[-1]
+          res+=">"+line.split("\t")[-2]+"_"+diptype+"_"+line.split("\t")[2]+"_"+line.split("\t")[3]+"_"+line.split("\t")[8].split("|")[1][:-1]+"_1"+"\n"+seqs[0]
+          res+=">"+line.split("\t")[-2]+"_"+diptype+"_"+line.split("\t")[2]+"_"+line.split("\t")[3]+"_"+line.split("\t")[8].split("|")[1][:-1]+"_2"+"\n"+seqs[1]
+    with open (output[0],'w') as fo:
       fo.write(res)
-  """
 
 #Run STAR only with DIPS form di-tector
 rule STAR2:

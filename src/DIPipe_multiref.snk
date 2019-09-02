@@ -7,8 +7,11 @@
 #H7
 #snakemake --snakefile DIPipe_multiref.snk -j 12 --config ifq=/home/miguelgrau/projects/DIPs/cambodia_data/H7/ refFA=/home/miguelgrau/projects/DIPs/refs/multi/H7_camb/ out=/home/miguelgrau/projects/DIPs/H7multi/ info=/home/miguelgrau/projects/DIPs/refs/multi/H7_camb/info.csv -np
 
-#H7
-#snakemake --snakefile DIPipe_multiref.snk -j 12 --config ifq=/home/miguelgrau/projects/DIPs/cambodia_data/H7/ refFA=/home/miguelgrau/projects/DIPs/refs/multi/H7_camb/ out=/home/miguelgrau/projects/DIPs/H7multi/ info=/home/miguelgrau/projects/DIPs/refs/multi/H7_camb/info.csv -np
+#m3
+#snakemake --snakefile dips/src/DIPipe_multiref.snk -j 12 --config ifq=/home/miguelg/bm14_scratch/miguel/DIP/cambodia_data/H9/ refFA=/home/miguelg/bm14_scratch/miguel/DIP/refs/multi/H9N2_camb/ out=/home/miguelg/bm14_scratch/miguel/DIP/H9multi2/ info=/home/miguelg/bm14_scratch/miguel/DIP/refs/multi/H9N2_camb/info.csv -np
+#snakemake --snakefile dips/src/DIPipe_multiref.snk -j 12 --config ifq=/home/miguelg/bm14_scratch/miguel/DIP/cambodia_data/H7/ refFA=/home/miguelg/bm14_scratch/miguel/DIP/refs/multi/H7_camb/ out=/home/miguelg/bm14_scratch/miguel/DIP/H7multi2/ info=/home/miguelg/bm14_scratch/miguel/DIP/refs/multi/H7_camb/info.csv -np
+#snakemake --snakefile dips/src/DIPipe_multiref.snk -j 12 --config ifq=/home/miguelg/bm14_scratch/miguel/DIP/cambodia_data/H5/ refFA=/home/miguelg/bm14_scratch/miguel/DIP/refs/multi/H5N1_camb/ out=/home/miguelg/bm14_scratch/miguel/DIP/H5multi2/ info=/home/miguelg/bm14_scratch/miguel/DIP/refs/multi/H5N1_camb/info.csv -np
+#snakemake --snakefile dips/src/DIPipe_multiref.snk -j 12 --config ifq=/home/miguelg/bm14_scratch/miguel/DIP/cambodia_data/H9/ refFA=/home/miguelg/bm14_scratch/miguel/DIP/refs/multi/H9N2_camb/ out=/home/miguelg/bm14_scratch/miguel/DIP/H9multi2/ info=/home/miguelg/bm14_scratch/miguel/DIP/refs/multi/H9N2_camb/info.csv -np
 
 #DENGUE
 #snakemake --snakefile DIPipe_multiref.snk -j 12 --config ifq=/home/miguelg/bm14/data/DIPs/dengue/ refFA=/home/miguelg/bm14_scratch/miguel/DIP/dengue2/consensus/post/ out=/home/miguelgrau/projects/DIPs/denguemulti/ info=/home/miguelgrau/projects/DIPs/refs/multi/H7_camb/info.csv -np
@@ -51,6 +54,7 @@ threads=4
 #trimmomatic="/home/miguelgrau/apps/Trimmomatic-0.39/trimmomatic-0.39.jar"
 #m3
 trimmomatic="/home/miguelg/bm14/apps/Trimmomatic-0.36/trimmomatic-0.36.jar"
+ditect="/home/miguelg/bm14/apps/DI-tector_06.py"
 
 #Check file-names
 SAMPLES=[]
@@ -65,6 +69,16 @@ with open (infF,"r") as f:
 #print(filenam)
 
 ## Functions -------------------------------------------------------------------
+
+def extracttype (t):
+  if "Deletion" in t:
+    return "Deletion"
+  elif "Insertion" in t:
+    return "Insertion"
+  elif "3' cb/sb" in t:
+    return "3cb/sb"
+  elif "5' cb/sb" in t:
+    return "5cb/sb"
 
 # Rules ------------------------------------------------------------------------
 #
@@ -127,10 +141,11 @@ rule ditector:
     files2=workspace+'DItector/{sample}/DI-tector_output_sorted.txt'
   params:
     out=workspace+'DItector/{sample}/',
-    ref=refFA+"{sample}.fa"
+    ref=refFA+"{sample}.fa",
+    ditect=ditect
   shell:"""
     bwa index {params.ref}
-    python3 /home/miguelgrau/apps/DI-tector_06.py {params.ref} {input.files} -o {params.out} -x 4
+    python3 {params.ditect} {params.ref} {input.files} -o {params.out} -x 4
   """
 
 #Prepare fastas for di-tector output
@@ -144,7 +159,11 @@ rule ditect2fasta:
     with open (input[0],'r') as fi:
       for line in fi:
         if line.split("\t")[0]!="DVG's type":
-          res+=">"+line.split("\t")[-2]+"\n"+line.split("\t")[-1]
+          diptype=extracttype(line.split("\t")[0])
+          seqs=re.findall(r'[a-z]+|[A-Z]+', line.split("\t")[-1][:-1])
+          #res+=">"+line.split("\t")[-2]+"_"+diptype+"_"+line.split("\t")[2]+"_"+line.split("\t")[3]+"_"+line.split("\t")[8].split("|")[1][:-1]+"\n"+line.split("\t")[-1]
+          res+=">"+line.split("\t")[-2]+"_"+diptype+"_"+line.split("\t")[2]+"_"+line.split("\t")[3]+"_"+line.split("\t")[8].split("|")[1][:-1]+"_1"+"\n"+seqs[0]
+          res+=">"+line.split("\t")[-2]+"_"+diptype+"_"+line.split("\t")[2]+"_"+line.split("\t")[3]+"_"+line.split("\t")[8].split("|")[1][:-1]+"_2"+"\n"+seqs[1]
     with open (output[0],'w') as fo:
       fo.write(res)
 

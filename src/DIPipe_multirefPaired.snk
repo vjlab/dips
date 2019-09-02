@@ -38,6 +38,7 @@ threads=4
 #trimmomatic="/home/miguelgrau/apps/Trimmomatic-0.39/trimmomatic-0.39.jar"
 #m3
 trimmomatic="/home/miguelg/bm14/apps/Trimmomatic-0.36/trimmomatic-0.36.jar"
+ditect="/home/miguelg/bm14/apps/DI-tector_06.py"
 
 #Check file-names
 SAMPLES=[]
@@ -53,6 +54,17 @@ for file in glob.glob(IFQ+"*.R1.fastq.gz"):
 #print(filenam)
 
 ## Functions -------------------------------------------------------------------
+
+def extracttype (t):
+  if "Deletion" in t:
+    return "Deletion"
+  elif "Insertion" in t:
+    return "Insertion"
+  elif "3' cb/sb" in t:
+    return "3cb/sb"
+  elif "5' cb/sb" in t:
+    return "5cb/sb"
+
 
 # Rules ------------------------------------------------------------------------
 #
@@ -149,10 +161,11 @@ rule ditector:
     files2=workspace+'DItector/{sample}/DI-tector_output_sorted.txt'
   params:
     out=workspace+'DItector/{sample}/',
-    ref=refFA+"{sample}.fa"
+    ref=refFA+"{sample}.fa",
+    ditect=ditect
   shell:"""
     bwa index {params.ref}
-    python3 /home/miguelg/bm14/apps/DI-tector_06.py {params.ref} {input.files} -o {params.out} -x 4
+    python3 {params.ditect} {params.ref} {input.files} -o {params.out} -x 4
   """
 
 #Prepare fastas for di-tector output
@@ -166,7 +179,11 @@ rule ditect2fasta:
     with open (input[0],'r') as fi:
       for line in fi:
         if line.split("\t")[0]!="DVG's type":
-          res+=">"+line.split("\t")[-2]+"\n"+line.split("\t")[-1]
+          diptype=extracttype(line.split("\t")[0])
+          seqs=re.findall(r'[a-z]+|[A-Z]+', line.split("\t")[-1][:-1])
+          #res+=">"+line.split("\t")[-2]+"_"+diptype+"_"+line.split("\t")[2]+"_"+line.split("\t")[3]+"_"+line.split("\t")[8].split("|")[1][:-1]+"\n"+line.split("\t")[-1]
+          res+=">"+line.split("\t")[-2]+"_"+diptype+"_"+line.split("\t")[2]+"_"+line.split("\t")[3]+"_"+line.split("\t")[8].split("|")[1][:-1]+"_1"+"\n"+seqs[0]
+          res+=">"+line.split("\t")[-2]+"_"+diptype+"_"+line.split("\t")[2]+"_"+line.split("\t")[3]+"_"+line.split("\t")[8].split("|")[1][:-1]+"_2"+"\n"+seqs[1]
     with open (output[0],'w') as fo:
       fo.write(res)
 
