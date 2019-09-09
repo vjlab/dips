@@ -47,7 +47,7 @@ SAMPLES=[]
 
 #Check file-names
 SAMPLES=[]
-for file in glob.glob(IFQ+"*.R1.fastq.gz"):
+for file in glob.glob(IFQ+"*.R1.fastq"):
   SAMPLES.append('.'.join(file.split("/")[-1].split(".")[:-3]))
 
 

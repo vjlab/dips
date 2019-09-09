@@ -6,12 +6,16 @@
 #snakemake --snakefile DIPipe_multiref.snk -j 12 --config ifq=/home/miguelgrau/projects/DIPs/cambodia_data/H5/ refFA=/home/miguelgrau/projects/DIPs/refs/multi/H5N1_camb/ out=/home/miguelgrau/projects/DIPs/H5multi/ info=/home/miguelgrau/projects/DIPs/refs/multi/H5N1_camb/info.csv -np
 #H7
 #snakemake --snakefile DIPipe_multiref.snk -j 12 --config ifq=/home/miguelgrau/projects/DIPs/cambodia_data/H7/ refFA=/home/miguelgrau/projects/DIPs/refs/multi/H7_camb/ out=/home/miguelgrau/projects/DIPs/H7multi/ info=/home/miguelgrau/projects/DIPs/refs/multi/H7_camb/info.csv -np
+#pH1N1
+#snakemake --snakefile DIPipe_multiref.snk -j 12 --config ifq=/home/miguelgrau/projects/DIPs/cambodia_data/H7/ refFA=/home/miguelgrau/projects/DIPs/refs/multi/H7_camb/ out=/home/miguelgrau/projects/DIPs/H7multi/ info=/home/miguelgrau/projects/DIPs/refs/multi/H7_camb/info.csv -np
 
 #m3
 #snakemake --snakefile dips/src/DIPipe_multiref.snk -j 12 --config ifq=/home/miguelg/bm14_scratch/miguel/DIP/cambodia_data/H9/ refFA=/home/miguelg/bm14_scratch/miguel/DIP/refs/multi/H9N2_camb/ out=/home/miguelg/bm14_scratch/miguel/DIP/H9multi2/ info=/home/miguelg/bm14_scratch/miguel/DIP/refs/multi/H9N2_camb/info.csv -np
 #snakemake --snakefile dips/src/DIPipe_multiref.snk -j 12 --config ifq=/home/miguelg/bm14_scratch/miguel/DIP/cambodia_data/H7/ refFA=/home/miguelg/bm14_scratch/miguel/DIP/refs/multi/H7_camb/ out=/home/miguelg/bm14_scratch/miguel/DIP/H7multi2/ info=/home/miguelg/bm14_scratch/miguel/DIP/refs/multi/H7_camb/info.csv -np
 #snakemake --snakefile dips/src/DIPipe_multiref.snk -j 12 --config ifq=/home/miguelg/bm14_scratch/miguel/DIP/cambodia_data/H5/ refFA=/home/miguelg/bm14_scratch/miguel/DIP/refs/multi/H5N1_camb/ out=/home/miguelg/bm14_scratch/miguel/DIP/H5multi2/ info=/home/miguelg/bm14_scratch/miguel/DIP/refs/multi/H5N1_camb/info.csv -np
-#snakemake --snakefile dips/src/DIPipe_multiref.snk -j 12 --config ifq=/home/miguelg/bm14_scratch/miguel/DIP/cambodia_data/H9/ refFA=/home/miguelg/bm14_scratch/miguel/DIP/refs/multi/H9N2_camb/ out=/home/miguelg/bm14_scratch/miguel/DIP/H9multi2/ info=/home/miguelg/bm14_scratch/miguel/DIP/refs/multi/H9N2_camb/info.csv -np
+#snakemake --snakefile dips/src/DIPipe_multiref.snk -j 12 --config ifq=/home/miguelg/bm14_scratch/miguel/DIP/fluB/H1N1who/ refFA=/home/miguelg/bm14_scratch/miguel/DIP/WGS/H1N1who/consensus/post/ out=/home/miguelg/bm14_scratch/miguel/DIP/H1multi/ -np
+#snakemake --snakefile dips/src/DIPipe_multiref.snk -j 12 --config ifq=/home/miguelg/bm14_scratch/miguel/DIP/fluB/VIC/ refFA=/home/miguelg/bm14_scratch/miguel/DIP/WGS/VIC/consensus/post/ out=/home/miguelg/bm14_scratch/miguel/DIP/VICmulti/ -np
+#snakemake --snakefile dips/src/DIPipe_multiref.snk -j 12 --config ifq=/home/miguelg/bm14_scratch/miguel/DIP/fluB/YAM/ refFA=/home/miguelg/bm14_scratch/miguel/DIP/WGS/YAM/consensus/post/ out=/home/miguelg/bm14_scratch/miguel/DIP/YAMmulti/ -np
 
 #DENGUE
 #snakemake --snakefile DIPipe_multiref.snk -j 12 --config ifq=/home/miguelg/bm14/data/DIPs/dengue/ refFA=/home/miguelg/bm14_scratch/miguel/DIP/dengue2/consensus/post/ out=/home/miguelgrau/projects/DIPs/denguemulti/ info=/home/miguelgrau/projects/DIPs/refs/multi/H7_camb/info.csv -np
@@ -42,7 +46,7 @@ IFQ = config["ifq"]
 refFA =  config["refFA"]
 
 #Sample metadata
-infF =  config["info"]
+#infF =  config["info"]
 
 #Out folder
 workspace= config["out"]
@@ -52,19 +56,20 @@ threads=4
 #software location
 #vy server
 #trimmomatic="/home/miguelgrau/apps/Trimmomatic-0.39/trimmomatic-0.39.jar"
+#ditect="/home/miguelgrau/appsDI-tector_06.py"
 #m3
 trimmomatic="/home/miguelg/bm14/apps/Trimmomatic-0.36/trimmomatic-0.36.jar"
 ditect="/home/miguelg/bm14/apps/DI-tector_06.py"
 
 #Check file-names
 SAMPLES=[]
-for file in glob.glob(IFQ+"*.fastq.gz"):
+for file in glob.glob(IFQ+"*.fastq"):
   SAMPLES.append('.'.join(file.split("/")[-1].split(".")[:-1]))
 
-filenam={}
-with open (infF,"r") as f:
-  for line in f:
-    filenam[line.split("\t")[0]]=line.split("\t")[1][:-1]
+# filenam={}
+# with open (infF,"r") as f:
+#   for line in f:
+#     filenam[line.split("\t")[0]]=line.split("\t")[1][:-1]
 
 #print(filenam)
 
@@ -161,9 +166,15 @@ rule ditect2fasta:
         if line.split("\t")[0]!="DVG's type":
           diptype=extracttype(line.split("\t")[0])
           seqs=re.findall(r'[a-z]+|[A-Z]+', line.split("\t")[-1][:-1])
+          print(line)
+          print(line.split("\t")[-2])
+          print(line.split("\t")[2])
+          print(line.split("\t")[3])
+          print(line.split("\t")[8])
+          print(line.split("\t")[-1])
           #res+=">"+line.split("\t")[-2]+"_"+diptype+"_"+line.split("\t")[2]+"_"+line.split("\t")[3]+"_"+line.split("\t")[8].split("|")[1][:-1]+"\n"+line.split("\t")[-1]
-          res+=">"+line.split("\t")[-2]+"_"+diptype+"_"+line.split("\t")[2]+"_"+line.split("\t")[3]+"_"+line.split("\t")[8].split("|")[1][:-1]+"_1"+"\n"+seqs[0]
-          res+=">"+line.split("\t")[-2]+"_"+diptype+"_"+line.split("\t")[2]+"_"+line.split("\t")[3]+"_"+line.split("\t")[8].split("|")[1][:-1]+"_2"+"\n"+seqs[1]
+          res+=">"+line.split("\t")[-2]+"_"+diptype+"_"+line.split("\t")[2]+"_"+line.split("\t")[3]+"_"+line.split("\t")[8]+"_1|H5"+"\n"+seqs[0]+"\n"
+          res+=">"+line.split("\t")[-2]+"_"+diptype+"_"+line.split("\t")[2]+"_"+line.split("\t")[3]+"_"+line.split("\t")[8]+"_2|H5"+"\n"+seqs[1]+"\n"
     with open (output[0],'w') as fo:
       fo.write(res)
 
